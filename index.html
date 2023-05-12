@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+</head>
+
+<body>
+    <button onclick="initiatePayment()">Pay</button>
+
+    <script>
+        let token = "";
+        let orderID = "";
+        let body = {
+            amount: "100.00",
+            gst: "7",
+        };
+        async function initiatePayment() {
+            let response = await fetch(
+                "http://localhost:4000/api/v1/payments/paytm_checkout",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization:
+                            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NDIxNzc0MGQ4YjlmOWZmOGFhZGIyYWEiLCJpYXQiOjE2ODM4Nzc1OTYsImV4cCI6MTY4NTE3MzU5Nn0.Et5kmXAhTr-gRWJvGtvWhLrCMAt-BRQQ2L53Fhkechc",
+                    },
+                    body
+                }
+            );
+            response.json().then((data) => {
+                token = data.response.body.txnToken;
+                orderID = data.orderID;
+                console.log(token, orderID);
+                initiateClientModule();
+            });
+        }
+        function initiateClientModule() {
+            const script = document.createElement("script");
+            script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/oDrXuj08975607816748.js`;
+            script.crossOrigin = `anonymous`;
+            script.onload = () => {
+                var config = {
+                    root: "",
+                    flow: "DEFAULT",
+                    data: {
+                        orderId: orderID /* update order id */,
+                        token: token /* update token value */,
+                        tokenType: "TXN_TOKEN",
+                        amount: "1.00" /* update amount */,
+                    },
+                    handler: {
+                        notifyMerchant: function (eventName, data) {
+                            console.log("notifyMerchant handler function called");
+                            console.log("eventName => ", eventName);
+                            console.log("data => ", data);
+                        },
+                    },
+                };
+
+                if (window.Paytm && window.Paytm.CheckoutJS) {
+                    window.Paytm.CheckoutJS.onLoad(
+                        function excecuteAfterCompleteLoad() {
+                            // initialze configuration using init method
+                            window.Paytm.CheckoutJS.init(config)
+                                .then(function onSuccess() {
+                                    // after successfully updating configuration, invoke JS Checkout
+                                    window.Paytm.CheckoutJS.invoke();
+                                })
+                                .catch(function onError(error) {
+                                    console.log("error => ", error);
+                                });
+                        }
+                    );
+                }
+            };
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+
+</html>
